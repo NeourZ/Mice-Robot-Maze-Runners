@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>MAZE // PATHFINDING LAB</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B1220;
+    --panel:#0F1B2E;
+    --panel-2:#132540;
+    --line:#22344F;
+    --grid-line:rgba(139,180,255,0.14);
+    --text:#E6EDF7;
+    --muted:#7C8CA6;
+    --cyan:#4CD3E0;
+    --amber:#F5A623;
+    --red:#F0554D;
+    --green:#5FD98A;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospace;}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 20px 60px;}
+  header{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:22px;}
+  h1{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:28px;letter-spacing:0.5px;margin:0;}
+  h1 span{color:var(--cyan);}
+  .subtitle{color:var(--muted);font-size:12.5px;letter-spacing:0.5px;}
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:22px;}
+  @media (max-width:880px){.layout{grid-template-columns:1fr;}}
+
+  .stage{background:var(--panel);border:1px solid var(--line);border-radius:2px;padding:16px;position:relative;}
+  .stage-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;}
+  .status-pill{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px;padding:4px 10px;border:1px solid var(--line);border-radius:20px;text-transform:uppercase;}
+  .status-idle{color:var(--muted);}
+  .status-play{color:var(--cyan);border-color:var(--cyan);}
+  .status-win{color:var(--green);border-color:var(--green);}
+  .status-lose{color:var(--red);border-color:var(--red);}
+
+  canvas{display:block;width:100%;height:auto;background:#0A1424;border:1px solid var(--line);image-rendering:pixelated;}
+
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:11px;color:var(--muted);}
+  .legend div{display:flex;align-items:center;gap:6px;}
+  .swatch{width:10px;height:10px;border-radius:2px;display:inline-block;}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:2px;padding:18px;display:flex;flex-direction:column;gap:18px;height:fit-content;}
+  .block-title{font-family:'Space Grotesk',sans-serif;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--cyan);border-bottom:1px solid var(--line);padding-bottom:8px;}
+
+  select, .btn{
+    width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--text);
+    font-family:'IBM Plex Mono',monospace;font-size:13px;padding:10px 12px;border-radius:2px;cursor:pointer;
+  }
+  select:focus, .btn:focus{outline:2px solid var(--cyan);outline-offset:1px;}
+  .btn{transition:border-color .15s, color .15s;}
+  .btn:hover{border-color:var(--cyan);color:var(--cyan);}
+  .btn-primary{background:var(--cyan);color:#04252b;font-weight:600;border-color:var(--cyan);}
+  .btn-primary:hover{background:#3fc0cc;color:#04252b;}
+  .btn-row{display:flex;gap:8px;}
+  .btn-row .btn{flex:1;}
+
+  .row{display:flex;flex-direction:column;gap:6px;}
+  label.field-label{font-size:11px;color:var(--muted);letter-spacing:0.5px;text-transform:uppercase;}
+  input[type=range]{width:100%;accent-color:var(--cyan);}
+  .toggle{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text);}
+  input[type=checkbox]{accent-color:var(--cyan);width:15px;height:15px;}
+
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .stat{background:var(--panel-2);border:1px solid var(--line);padding:10px;border-radius:2px;}
+  .stat .k{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px;}
+  .stat .v{font-size:16px;font-weight:600;font-family:'Space Grotesk',sans-serif;}
+  .stat.full{grid-column:1/-1;}
+  .bar-bg{background:var(--line);border-radius:20px;height:6px;overflow:hidden;margin-top:6px;}
+  .bar-fill{height:100%;background:var(--cyan);transition:width .2s;}
+  .bar-fill.danger{background:var(--red);}
+  .bar-fill.warn{background:var(--amber);}
+
+  .msg{font-size:12px;color:var(--muted);line-height:1.6;}
+  .msg b{color:var(--text);}
+
+  footer{margin-top:26px;color:var(--muted);font-size:11px;line-height:1.8;border-top:1px solid var(--line);padding-top:14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>MAZE <span>// PATHFINDING LAB</span></h1>
+      <div class="subtitle">30×30 procedural maze · shortest-path mouse agent · computation-limited</div>
+    </div>
+    <div id="statusPill" class="status-pill status-idle">รอเริ่ม</div>
+  </header>
+
+  <div class="layout">
+    <div class="stage">
+      <div class="stage-header">
+        <span>SCHEMATIC VIEW</span>
+        <span id="coordLabel">30 × 30 CELLS · 16×16 CM/CELL</span>
+      </div>
+      <canvas id="mazeCanvas" width="600" height="600"></canvas>
+      <div class="legend">
+        <div><span class="swatch" style="background:#5FD98A"></span> Start</div>
+        <div><span class="swatch" style="background:#F0554D"></span> Goal</div>
+        <div><span class="swatch" style="background:#F5A623"></span> Cheese</div>
+        <div><span class="swatch" style="background:#4CD3E0"></span> Mouse</div>
+        <div><span class="swatch" style="background:rgba(76,211,224,0.35)"></span> เส้นทางที่วางแผน</div>
+        <div><span class="swatch" style="background:rgba(245,166,35,0.25)"></span> ช่องที่สำรวจ</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div>
+        <div class="block-title">ควบคุม</div>
+        <div class="row" style="margin-top:12px;">
+          <label class="field-label">อัลกอริทึมหาเส้นทาง</label>
+          <select id="algoSelect">
+            <option value="astar">A* (Manhattan heuristic)</option>
+            <option value="dijkstra">Dijkstra</option>
+            <option value="bfs">BFS</option>
+          </select>
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <label class="field-label">ความเร็วเดินอัตโนมัติ: <span id="speedVal">220ms</span>/ก้าว</label>
+          <input type="range" id="speedRange" min="30" max="600" value="220" step="10">
+        </div>
+        <div class="toggle" style="margin-top:10px;">
+          <input type="checkbox" id="showVisited" checked>
+          <label for="showVisited">แสดงช่องที่สำรวจ (visited nodes)</label>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="newMazeBtn">เขาวงกตใหม่</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="stepBtn">เดิน 1 ก้าว</button>
+        <button class="btn" id="autoBtn">▶ เดินอัตโนมัติ</button>
+      </div>
+
+      <div>
+        <div class="block-title">สถานะ (Computation)</div>
+        <div class="stats" style="margin-top:12px;">
+          <div class="stat full">
+            <div class="k">Computation ใช้ไป / ลิมิต 30</div>
+            <div class="v" id="compStat">0 / 30</div>
+            <div class="bar-bg"><div class="bar-fill" id="compBar" style="width:0%"></div></div>
+          </div>
+          <div class="stat">
+            <div class="k">Nodes สำรวจล่าสุด</div>
+            <div class="v" id="nodesStat">–</div>
+          </div>
+          <div class="stat">
+            <div class="k">ระยะทางที่พบ</div>
+            <div class="v" id="distStat">–</div>
+          </div>
+          <div class="stat">
+            <div class="k">เวลาในการคำนวณ</div>
+            <div class="v" id="timeStat">–</div>
+          </div>
+          <div class="stat">
+            <div class="k">ชีสที่เหลือ</div>
+            <div class="v" id="cheeseStat">2</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="block-title">บันทึกเกม</div>
+        <div class="msg" id="logMsg" style="margin-top:10px;">กด “เขาวงกตใหม่” เพื่อเริ่มต้น จากนั้นให้หนูวางแผนเส้นทางไปยังชีสทีละก้าว</div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Module: MazeGenerator (randomized DFS, spanning-tree ⇒ guaranteed solvable, no unreachable cells) ·
+    Pathfinding (BFS / Dijkstra / A*, strategy pattern) · MouseController (4-directional, 1 cell/step) ·
+    GameManager (win/lose rules, computation ≤ 30, ≥ 5 required) · Renderer (canvas schematic).
+  </footer>
+</div>
+
+<script>
+/* =========================================================================
+   MODULE: CONFIG
+   ========================================================================= */
+const GRID_SIZE = 30;        // 30 x 30 cells
+const CELL_CM   = 16;        // real-world size per cell (informational)
+const CANVAS_PX = 600;       // on-screen canvas size
+const CELL_PX   = CANVAS_PX / GRID_SIZE;
+const COMPUTATION_LIMIT = 30;
+const COMPUTATION_MINIMUM = 5;
+
+/* =========================================================================
+   MODULE: MazeGenerator
+   Builds a perfect maze (spanning tree) via randomized depth-first search.
+   A perfect maze guarantees: exactly one path between any two cells
+   (=> solvable, no unreachable areas), and naturally produces dead ends.
+   ========================================================================= */
+const MazeGenerator = {
+  generate(size) {
+    // Each cell tracks which of its 4 walls are still standing.
+    const cells = [];
+    for (let r = 0; r < size; r++) {
+      const row = [];
+      for (let c = 0; c < size; c++) {
+        row.push({ top: true, right: true, bottom: true, left: true, visited: false });
+      }
+      cells.push(row);
+    }
+
+    const stack = [];
+    let current = { r: 0, c: 0 };
+    cells[0][0].visited = true;
+    stack.push(current);
+
+    const dirs = [
+      { key: 'top',    dr: -1, dc: 0,  opposite: 'bottom' },
+      { key: 'right',  dr: 0,  dc: 1,  opposite: 'left'   },
+      { key: 'bottom', dr: 1,  dc: 0,  opposite: 'top'    },
+      { key: 'left',   dr: 0,  dc: -1, opposite: 'right'  },
+    ];
+
+    while (stack.length > 0) {
+      current = stack[stack.length - 1];
+      const unvisited = [];
+      for (const d of dirs) {
+        const nr = current.r + d.dr, nc = current.c + d.dc;
+        if (nr >= 0 && nr < size && nc >= 0 && nc < size && !cells[nr][nc].visited) {
+          unvisited.push({ r: nr, c: nc, dir: d });
+        }
+      }
+      if (unvisited.length > 0) {
+        const pick = unvisited[Math.floor(Math.random() * unvisited.length)];
+        cells[current.r][current.c][pick.dir.key] = false;
+        cells[pick.r][pick.c][pick.dir.opposite] = false;
+        cells[pick.r][pick.c].visited = true;
+        stack.push({ r: pick.r, c: pick.c });
+      } else {
+        stack.pop();
+      }
+    }
+    return cells;
+  },
+
+  neighbors(cells, r, c) {
+    const size = cells.length;
+    const cell = cells[r][c];
+    const out = [];
+    if (!cell.top && r > 0) out.push({ r: r - 1, c });
+    if (!cell.bottom && r < size - 1) out.push({ r: r + 1, c });
+    if (!cell.left && c > 0) out.push({ r, c: c - 1 });
+    if (!cell.right && c < size - 1) out.push({ r, c: c + 1 });
+    return out;
+  }
+};
+
+/* =========================================================================
+   MODULE: Pathfinding (Strategy pattern — swap algorithm freely)
+   Every algorithm returns: { path:[{r,c}...], visited:[{r,c}...], nodesExplored, distance, timeMs }
+   ========================================================================= */
+const Pathfinding = {
+  bfs(cells, start, goal) {
+    const t0 = performance.now();
+    const size = cells.length;
+    const visited = Array.from({ length: size }, () => new Array(size).fill(false));
+    const prev = {};
+    const queue = [start];
+    visited[start.r][start.c] = true;
+    const order = [];
+    let found = false;
+
+    while (queue.length) {
+      const cur = queue.shift();
+      order.push(cur);
+      if (cur.r === goal.r && cur.c === goal.c) { found = true; break; }
+      for (const n of MazeGenerator.neighbors(cells, cur.r, cur.c)) {
+        if (!visited[n.r][n.c]) {
+          visited[n.r][n.c] = true;
+          prev[`${n.r},${n.c}`] = cur;
+          queue.push(n);
+        }
+      }
+    }
+    const path = found ? Pathfinding._reconstruct(prev, start, goal) : [];
+    return { path, visited: order, nodesExplored: order.length, distance: path.length ? path.length - 1 : -1, timeMs: performance.now() - t0 };
+  },
+
+  dijkstra(cells, start, goal) {
+    const t0 = performance.now();
+    const size = cells.length;
+    const dist = Array.from({ length: size }, () => new Array(size).fill(Infinity));
+    const visited = Array.from({ length: size }, () => new Array(size).fill(false));
+    const prev = {};
+    dist[start.r][start.c] = 0;
+    const order = [];
+    // Simple priority queue via array (grid is small enough, 900 nodes max).
+    const pq = [{ r: start.r, c: start.c, d: 0 }];
+    let found = false;
+
+    while (pq.length) {
+      pq.sort((a, b) => a.d - b.d);
+      const cur = pq.shift();
+      if (visited[cur.r][cur.c]) continue;
+      visited[cur.r][cur.c] = true;
+      order.push({ r: cur.r, c: cur.c });
+      if (cur.r === goal.r && cur.c === goal.c) { found = true; break; }
+      for (const n of MazeGenerator.neighbors(cells, cur.r, cur.c)) {
+        const nd = cur.d + 1;
+        if (nd < dist[n.r][n.c]) {
+          dist[n.r][n.c] = nd;
+          prev[`${n.r},${n.c}`] = { r: cur.r, c: cur.c };
+          pq.push({ r: n.r, c: n.c, d: nd });
+        }
+      }
+    }
+    const path = found ? Pathfinding._reconstruct(prev, start, goal) : [];
+    return { path, visited: order, nodesExplored: order.length, distance: path.length ? path.length - 1 : -1, timeMs: performance.now() - t0 };
+  },
+
+  astar(cells, start, goal) {
+    const t0 = performance.now();
+    const size = cells.length;
+    const h = (r, c) => Math.abs(r - goal.r) + Math.abs(c - goal.c); // Manhattan heuristic
+    const g = Array.from({ length: size }, () => new Array(size).fill(Infinity));
+    const visited = Array.from({ length: size }, () => new Array(size).fill(false));
+    const prev = {};
+    g[start.r][start.c] = 0;
+    const open = [{ r: start.r, c: start.c, f: h(start.r, start.c) }];
+    const order = [];
+    let found = false;
+
+    while (open.length) {
+      open.sort((a, b) => a.f - b.f);
+      const cur = open.shift();
+      if (visited[cur.r][cur.c]) continue;
+      visited[cur.r][cur.c] = true;
+      order.push({ r: cur.r, c: cur.c });
+      if (cur.r === goal.r && cur.c === goal.c) { found = true; break; }
+      for (const n of MazeGenerator.neighbors(cells, cur.r, cur.c)) {
+        const ng = g[cur.r][cur.c] + 1;
+        if (ng < g[n.r][n.c]) {
+          g[n.r][n.c] = ng;
+          prev[`${n.r},${n.c}`] = { r: cur.r, c: cur.c };
+          open.push({ r: n.r, c: n.c, f: ng + h(n.r, n.c) });
+        }
+      }
+    }
+    const path = found ? Pathfinding._reconstruct(prev, start, goal) : [];
+    return { path, visited: order, nodesExplored: order.length, distance: path.length ? path.length - 1 : -1, timeMs: performance.now() - t0 };
+  },
+
+  _reconstruct(prev, start, goal) {
+    const path = [goal];
+    let cur = goal;
+    while (!(cur.r === start.r && cur.c === start.c)) {
+      cur = prev[`${cur.r},${cur.c}`];
+      if (!cur) return [];
+      path.push(cur);
+    }
+    return path.reverse();
+  },
+
+  run(name, cells, start, goal) {
+    if (name === 'bfs') return this.bfs(cells, start, goal);
+    if (name === 'dijkstra') return this.dijkstra(cells, start, goal);
+    return this.astar(cells, start, goal);
+  }
+};
+
+/* =========================================================================
+   MODULE: GameManager
+   Owns maze state, mouse position, cheese list, computation counter,
+   and win/lose rules.
+   ========================================================================= */
+const GameManager = {
+  cells: null,
+  start: { r: 0, c: 0 },
+  goal: { r: GRID_SIZE - 1, c: GRID_SIZE - 1 },
+  mouse: { r: 0, c: 0 },
+  cheeses: [],
+  computations: 0,
+  lastResult: null,
+  status: 'idle', // idle | playing | win | lose
+  loseReason: '',
+
+  newMaze() {
+    this.cells = MazeGenerator.generate(GRID_SIZE);
+    this.mouse = { r: this.start.r, c: this.start.c };
+    this.cheeses = [
+      { r: this.start.r, c: this.start.c },
+      { r: this.goal.r, c: this.goal.c }
+    ];
+    this.computations = 0;
+    this.lastResult = null;
+    this.status = 'playing';
+    this.loseReason = '';
+    // Collect any cheese the mouse starts on top of (Start cell), free of charge.
+    this._collectCheeseAtMouse();
+  },
+
+  _collectCheeseAtMouse() {
+    this.cheeses = this.cheeses.filter(ch => !(ch.r === this.mouse.r && ch.c === this.mouse.c));
+  },
+
+  _nearestCheese(algoName) {
+    // Evaluate shortest path to each remaining cheese, pick the closer target.
+    let best = null;
+    for (const ch of this.cheeses) {
+      const result = Pathfinding.run(algoName, this.cells, this.mouse, ch);
+      if (result.path.length > 0 && (!best || result.distance < best.result.distance)) {
+        best = { cheese: ch, result };
+      }
+    }
+    return best;
+  },
+
+  step(algoName) {
+    if (this.status !== 'playing') return { ok: false };
+    if (this.cheeses.length === 0) { this.status = 'win'; return { ok: false }; }
+
+    const best = this._nearestCheese(algoName);
+    // Every planning attempt (successful or not) counts as one computation.
+    this.computations += 1;
+    this.lastResult = best ? best.result : { nodesExplored: 0, distance: -1, timeMs: 0, path: [], visited: [] };
+
+    if (this.computations > COMPUTATION_LIMIT) {
+      this.status = 'lose';
+      this.loseReason = `Computation เกินลิมิต (${this.computations} > ${COMPUTATION_LIMIT}) — หนู "ตาย"`;
+      return { ok: false, result: this.lastResult };
+    }
+
+    if (!best) {
+      this.status = 'lose';
+      this.loseReason = 'ไม่สามารถหาเส้นทางไปชีสได้ (unreachable)';
+      return { ok: false, result: this.lastResult };
+    }
+
+    const path = best.result.path;
+    if (path.length < 2) {
+      // Already standing on the target somehow — collect and continue.
+      this._collectCheeseAtMouse();
+      return { ok: true, result: this.lastResult, moved: false };
+    }
+
+    const next = path[1];
+    // Validate the move against walls/bounds before committing (defensive check).
+    const neighborsOfMouse = MazeGenerator.neighbors(this.cells, this.mouse.r, this.mouse.c);
+    const legal = neighborsOfMouse.some(n => n.r === next.r && n.c === next.c);
+    if (!legal) {
+      this.status = 'lose';
+      this.loseReason = 'หนูพยายามเดินทะลุกำแพง (illegal move)';
+      return { ok: false, result: this.lastResult };
+    }
+    if (next.r < 0 || next.r >= GRID_SIZE || next.c < 0 || next.c >= GRID_SIZE) {
+      this.status = 'lose';
+      this.loseReason = 'หนูออกนอกแผนที่';
+      return { ok: false, result: this.lastResult };
+    }
+
+    this.mouse = { r: next.r, c: next.c };
+    this._collectCheeseAtMouse();
+
+    if (this.cheeses.length === 0) {
+      this.status = 'win';
+    }
+    return { ok: true, result: this.lastResult, moved: true };
+  }
+};
+
+/* =========================================================================
+   MODULE: Renderer
+   ========================================================================= */
+const canvas = document.getElementById('mazeCanvas');
+canvas.width = CANVAS_PX; canvas.height = CANVAS_PX;
+const ctx = canvas.getContext('2d');
+
+const Renderer = {
+  draw(showVisited) {
+    ctx.clearRect(0, 0, CANVAS_PX, CANVAS_PX);
+    ctx.fillStyle = '#0A1424';
+    ctx.fillRect(0, 0, CANVAS_PX, CANVAS_PX);
+
+    // Faint background grid (blueprint feel)
+    ctx.strokeStyle = 'rgba(139,180,255,0.05)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= GRID_SIZE; i++) {
+      ctx.beginPath(); ctx.moveTo(i * CELL_PX, 0); ctx.lineTo(i * CELL_PX, CANVAS_PX); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, i * CELL_PX); ctx.lineTo(CANVAS_PX, i * CELL_PX); ctx.stroke();
+    }
+
+    // Visited nodes overlay
+    if (showVisited && GameManager.lastResult && GameManager.lastResult.visited) {
+      ctx.fillStyle = 'rgba(245,166,35,0.18)';
+      for (const v of GameManager.lastResult.visited) {
+        ctx.fillRect(v.c * CELL_PX + 1, v.r * CELL_PX + 1, CELL_PX - 2, CELL_PX - 2);
+      }
+    }
+
+    // Planned path
+    if (GameManager.lastResult && GameManager.lastResult.path && GameManager.lastResult.path.length > 1) {
+      ctx.strokeStyle = 'rgba(76,211,224,0.55)';
+      ctx.lineWidth = Math.max(2, CELL_PX * 0.28);
+      ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      ctx.beginPath();
+      const p0 = GameManager.lastResult.path[0];
+      ctx.moveTo(p0.c * CELL_PX + CELL_PX / 2, p0.r * CELL_PX + CELL_PX / 2);
+      for (const p of GameManager.lastResult.path.slice(1)) {
+        ctx.lineTo(p.c * CELL_PX + CELL_PX / 2, p.r * CELL_PX + CELL_PX / 2);
+      }
+      ctx.stroke();
+    }
+
+    // Walls
+    const cells = GameManager.cells;
+    ctx.strokeStyle = '#3A5580';
+    ctx.lineWidth = 2;
+    for (let r = 0; r < GRID_SIZE; r++) {
+      for (let c = 0; c < GRID_SIZE; c++) {
+        const cell = cells[r][c];
+        const x = c * CELL_PX, y = r * CELL_PX;
+        ctx.beginPath();
+        if (cell.top) { ctx.moveTo(x, y); ctx.lineTo(x + CELL_PX, y); }
+        if (cell.left) { ctx.moveTo(x, y); ctx.lineTo(x, y + CELL_PX); }
+        if (cell.bottom) { ctx.moveTo(x, y + CELL_PX); ctx.lineTo(x + CELL_PX, y + CELL_PX); }
+        if (cell.right) { ctx.moveTo(x + CELL_PX, y); ctx.lineTo(x + CELL_PX, y + CELL_PX); }
+        ctx.stroke();
+      }
+    }
+    // Outer border
+    ctx.strokeStyle = '#5A7FB0';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(1, 1, CANVAS_PX - 2, CANVAS_PX - 2);
+
+    // Start / Goal markers
+    this._marker(GameManager.start, '#5FD98A', 'S');
+    this._marker(GameManager.goal, '#F0554D', 'G');
+
+    // Cheese
+    ctx.font = `${CELL_PX * 0.9}px serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const ch of GameManager.cheeses) {
+      ctx.fillText('🧀', ch.c * CELL_PX + CELL_PX / 2, ch.r * CELL_PX + CELL_PX / 2 + 1);
+    }
+
+    // Mouse
+    const m = GameManager.mouse;
+    ctx.fillText('🐭', m.c * CELL_PX + CELL_PX / 2, m.r * CELL_PX + CELL_PX / 2 + 1);
+  },
+
+  _marker(pos, color, label) {
+    ctx.fillStyle = color + '33';
+    ctx.fillRect(pos.c * CELL_PX + 2, pos.r * CELL_PX + 2, CELL_PX - 4, CELL_PX - 4);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(pos.c * CELL_PX + 2, pos.r * CELL_PX + 2, CELL_PX - 4, CELL_PX - 4);
+  }
+};
+
+/* =========================================================================
+   UI WIRING
+   ========================================================================= */
+const algoSelect   = document.getElementById('algoSelect');
+const speedRange   = document.getElementById('speedRange');
+const speedVal     = document.getElementById('speedVal');
+const showVisitedCB= document.getElementById('showVisited');
+const newMazeBtn   = document.getElementById('newMazeBtn');
+const stepBtn      = document.getElementById('stepBtn');
+const autoBtn      = document.getElementById('autoBtn');
+const statusPill   = document.getElementById('statusPill');
+const compStat     = document.getElementById('compStat');
+const compBar      = document.getElementById('compBar');
+const nodesStat    = document.getElementById('nodesStat');
+const distStat     = document.getElementById('distStat');
+const timeStat     = document.getElementById('timeStat');
+const cheeseStat   = document.getElementById('cheeseStat');
+const logMsg       = document.getElementById('logMsg');
+
+let autoTimer = null;
+
+function updateStatusPill() {
+  statusPill.className = 'status-pill status-' + (GameManager.status === 'playing' ? 'play' : GameManager.status === 'idle' ? 'idle' : GameManager.status);
+  const labels = { idle: 'รอเริ่ม', playing: 'กำลังเล่น', win: 'ชนะ ✓', lose: 'แพ้ ✕' };
+  statusPill.textContent = labels[GameManager.status];
+}
+
+function updateStats() {
+  const c = GameManager.computations;
+  compStat.textContent = `${c} / ${COMPUTATION_LIMIT}`;
+  const pct = Math.min(100, (c / COMPUTATION_LIMIT) * 100);
+  compBar.style.width = pct + '%';
+  compBar.className = 'bar-fill' + (c > COMPUTATION_LIMIT ? ' danger' : c >= COMPUTATION_LIMIT - 8 ? ' warn' : '');
+
+  const r = GameManager.lastResult;
+  nodesStat.textContent = r ? r.nodesExplored : '–';
+  distStat.textContent = r && r.distance >= 0 ? `${r.distance} ช่อง` : (r ? 'ไม่พบ' : '–');
+  timeStat.textContent = r ? `${r.timeMs.toFixed(2)} ms` : '–';
+  cheeseStat.textContent = GameManager.cheeses.length;
+  updateStatusPill();
+}
+
+function setLog(text) { logMsg.innerHTML = text; }
+
+function render() {
+  Renderer.draw(showVisitedCB.checked);
+  updateStats();
+}
+
+function doStep() {
+  if (GameManager.status !== 'playing') { stopAuto(); return; }
+  const algo = algoSelect.value;
+  const res = GameManager.step(algo);
+  render();
+
+  if (GameManager.status === 'win') {
+    stopAuto();
+    const metMin = GameManager.computations >= COMPUTATION_MINIMUM;
+    setLog(`🎉 <b>หนูถึงชีสที่ Goal สำเร็จ!</b><br>ใช้ computation ทั้งหมด ${GameManager.computations} ครั้ง (ขั้นต่ำ ${COMPUTATION_MINIMUM} ครั้ง: ${metMin ? 'ผ่าน ✓' : 'ไม่ถึงขั้นต่ำ แต่ชนะแล้วเพราะถึงเป้าหมาย'}).`);
+  } else if (GameManager.status === 'lose') {
+    stopAuto();
+    setLog(`💀 <b>เกมจบ (แพ้)</b><br>สาเหตุ: ${GameManager.loseReason}`);
+  } else if (res.moved === false) {
+    setLog(`เก็บชีสที่ตำแหน่งปัจจุบันแล้ว กำลังวางแผนไปเป้าหมายถัดไป...`);
+  } else {
+    setLog(`วางแผนเส้นทางด้วย <b>${algoSelect.options[algoSelect.selectedIndex].text}</b> → เดิน 1 ช่อง (computation #${GameManager.computations})`);
+  }
+}
+
+function startAuto() {
+  if (autoTimer) return;
+  autoBtn.textContent = '⏸ หยุด';
+  autoTimer = setInterval(doStep, parseInt(speedRange.value, 10));
+}
+function stopAuto() {
+  clearInterval(autoTimer);
+  autoTimer = null;
+  autoBtn.textContent = '▶ เดินอัตโนมัติ';
+}
+
+newMazeBtn.addEventListener('click', () => {
+  stopAuto();
+  GameManager.newMaze();
+  setLog('สร้างเขาวงกตใหม่แล้ว เริ่มมีชีส 2 ก้อนที่ Start และ Goal หนูเก็บก้อนที่ Start ไปแล้วโดยอัตโนมัติ พร้อมวางแผนไปยัง Goal');
+  render();
+});
+
+stepBtn.addEventListener('click', () => { stopAuto(); doStep(); });
+
+autoBtn.addEventListener('click', () => {
+  if (autoTimer) stopAuto(); else startAuto();
+});
+
+speedRange.addEventListener('input', () => {
+  speedVal.textContent = speedRange.value + 'ms';
+  if (autoTimer) { stopAuto(); startAuto(); }
+});
+
+showVisitedCB.addEventListener('change', render);
+algoSelect.addEventListener('change', () => setLog(`เปลี่ยนอัลกอริทึมเป็น <b>${algoSelect.options[algoSelect.selectedIndex].text}</b> — จะมีผลกับการวางแผนครั้งถัดไป`));
+
+// Initial boot
+GameManager.newMaze();
+render();
+</script>
+</body>
+</html>
